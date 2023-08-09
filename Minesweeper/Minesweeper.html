@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сапер</title>
+    <link rel="shortcut icon" href="mine.jpg" type="image/png">
+    <style type="text/css">
+        @font-face {
+            font-family: ebit;
+            src: url(PressStart2P-Regular.ttf);
+        }
+        body{
+            background-color: rgb(63, 60, 60);
+        }
+        .main_desk{
+            position: relative;
+            top: 20px;
+            left: 190px;
+            width: 1000px;
+            height: 500px;
+            background-color: rgb(161, 141, 141);
+            border: 7px solid  rgb(99, 91, 91);
+        }
+        .gamefield{
+            position: relative;
+            top: 20px;
+            left: 50px;            
+            padding: 0px;           
+        }
+        .field{
+            position: relative;
+            width: 30px;
+            height: 30px;
+            border: 0px;
+            margin-top: -2px;
+        }
+        .title{
+            position: absolute;
+            top: 20px;
+            left: 680px;
+            font-family: ebit, sans-serif;
+            font-size: 30px;
+        }
+        .play_state{
+            position: absolute;
+            top: 100px;
+            left: 540px;
+            width: 400px;
+        }
+        .player_name{
+            font-family: ebit, sans-serif;
+            font-size: 20px;
+        }
+        .timer{                       
+            font-family: ebit, sans-serif;
+            font-size: 20px;
+        }
+        .flags{            
+            font-family: ebit, sans-serif;
+            font-size: 20px;
+        }
+        .size_count{            
+            font-family: ebit, sans-serif;
+            font-size: 20px;
+        }
+        ul{
+            list-style-type: none;
+        }
+        li{
+            margin-top: 20px;
+        }
+        .field_size{
+            -webkit-appearance: none;
+            appearance: none;
+            position: absolute;
+            left: 620px;
+            top: 260px;
+            width: 250px;
+            background-color: grey;
+            overflow: hidden;
+            
+        }
+        .field_size::-webkit-slider-thumb{
+            appearance: none;
+            width: 40px;
+            height: 30px;
+            background: rgb(161, 141, 141);
+            cursor: pointer;
+            border: 5px solid rgb(99, 91, 91);
+            box-shadow: -400px 0 0 400px rgb(63, 60, 60);
+        }
+        .game_result{
+            position: absolute;
+            top: 340px;
+            left: 550px;
+            font-family: ebit, sans-serif;
+            font-size: 20px;
+        } 
+        .start_button{
+            position: absolute;
+            top: 400px;
+            left: 650px;
+            height: 60px;
+            background-color: rgb(161, 141, 141);
+            border: 7px solid  rgb(99, 91, 91);
+            font-family: ebit;
+            font-size: 18px;
+        }
+        
+    </style>
+</head>
+<body>    
+    <div class="main_desk">
+        <div class="gamefield"></div>
+        <span class="title">Сапер</span>
+        <div class="play_state">
+            <ul>
+            <li><span class="timer">Час: 0 сек</span></li>
+            <li><span class="flags">Залишилося ? мін</span></li>
+            <li><span class="size_count">Розмір поля: 10x10</span></li>
+            </ul>        
+        </div>
+        <input class="field_size" type="range" min="8" max="15" step="1" value="10" oninput="setSize()">
+        <span class="game_result"></span>
+        <button class="start_button" onclick="startGame()">Почати нову гру</button>
+    </div>
+
+    
+   
+ 
+    <script type="text/javascript">
+        let gameField = document.querySelector(".gamefield");
+        let mainDesk =  document.querySelector(".main_desk");
+        let flagsScore = document.querySelector(".flags");
+        let timeScore =  document.querySelector(".timer");
+        let sizeInput = document.querySelector(".field_size");
+        let sizeCount = document.querySelector(".size_count");
+        let gameResult = document.querySelector(".game_result");
+        let startButton = document.querySelector(".start_button");
+        let block;
+        let i = 0;
+        let freeFields;
+        let flagsAmount = -1;
+        let time = 0;
+        let timer;
+        let randX;
+        let randY;
+        let mine;
+        let textures = ["url('one.jpg')", "url('two.jpg')", "url('three.jpg')", "url('four.jpg')", "url('five.jpg')",
+                        "url('six.jpg')", "url('seven.jpg')", "url('one.jpg')"];
+        let mines = [];
+        let blocks = [];
+        let win;
+        let lose = false;
+        while (i < 15) {
+            blocks[i] = [];
+            i++;
+        }
+        let firstTouch = true;
+
+        function startGame(){
+            size = Number(sizeInput.value);
+
+            i = 0;
+            flagsAmount = -1;
+            win = false;
+            lose = false;
+            firstTouch = true;
+            time = 0;
+            timeScore.textContent = "Час: " + time + " сек";
+            flagsScore.textContent = "Залишилося ? мін";
+            gameResult.textContent = "";
+
+            mainDesk.removeChild(sizeInput);
+            mainDesk.removeChild(startButton);
+
+            mines = [];
+            blocks = [];
+            while (gameField.firstChild) {
+                gameField.removeChild(gameField.firstChild);
+            }
+            while (i < 15) {
+                blocks[i] = [];
+                i++;
+            }
+
+            gameField.style.width = `${size*30}px`;
+            gameField.style.height = `${size*30}px`;
+
+            for (n = 0; n < size; n++) {
+                    
+                for (i = 0; i < size; i++)
+                {
+                        block = document.createElement("button");
+                        block.className = "field";                
+                        block.style.backgroundImage = "url('close_field.jpg')";
+                        block.setAttribute("x", i);
+                        block.setAttribute("y", n)
+                        blocks[n][i] = {mined : false, neigbourMines: 0, opened : false, flagged: false, neigbourFlags: 0};
+                        
+                        block.onclick = (e) => {                    
+                            let X = Number(e.target.getAttribute("x"));
+                            let Y = Number(e.target.getAttribute("y"));
+                            if(!lose && !win && !blocks[Y][X].flagged) {
+                                if (!blocks[Y][X].opened) {
+                                    openField(X, Y, false);
+                                } else if (blocks[Y][X].neigbourFlags == blocks[Y][X].neigbourMines){
+                                    let neigbList = getNeigbours(Y, X);
+                                    neigbList.forEach(elem => {
+                                        if (!blocks[elem.y][elem.x].opened && !blocks[elem.y][elem.x].flagged){
+                                            openField(elem.x, elem.y, true);
+                                        }
+                                    });                            
+                                }                        
+                            };                   
+                        };
+                        block.oncontextmenu = (e) => {
+                        let X = Number(e.target.getAttribute("x"));
+                        let Y = Number(e.target.getAttribute("y"));
+                        if(!blocks[Y][X].opened && !lose && !win && !firstTouch){
+                            if(!blocks[Y][X].flagged && flagsAmount != 0){ 
+                                gameField.children[Y * size + X].style.backgroundImage = "url('flag.jpg')";
+                                blocks[Y][X].flagged = true;
+                                flagsAmount--;
+                                checkWin();
+                                let neigbList = getNeigbours(Y, X);
+                                neigbList.forEach(elem => {
+                                    blocks[elem.y][elem.x].neigbourFlags++;
+                                });
+                                flagsScore.textContent = "Залишилося " + flagsAmount + " мін";
+                            } else{
+                                gameField.children[Y * size + X].style.backgroundImage = "url('close_field.jpg')";
+                                blocks[Y][X].flagged = false;
+                                flagsAmount++;
+                                let neigbList = getNeigbours(Y, X);
+                                neigbList.forEach(elem => {
+                                    blocks[elem.y][elem.x].neigbourFlags--;
+                                });
+                                flagsScore.textContent = "Залишилося " + flagsAmount + " мін";
+                            }
+                        } 
+                        return false;
+                    }
+                    gameField.appendChild(block);
+                }
+            }
+            freeFields = size*size;
+            
+        }
+
+        function generateMines(X, Y) {
+                      
+            for (n = 0; n < (size*size)/4; n++){
+                randX = Math.floor(Math.random() * size);
+                randY = Math.floor(Math.random() * size);
+
+                while ((X == randX && Y == randY) || blocks[randY][randX].mined) {
+                    randX = Math.floor(Math.random() * size);
+                    randY = Math.floor(Math.random() * size);
+                }
+
+                blocks[randY][randX].mined = true;
+                mines.push({x : randX, y : randY});
+                let neigbList = getNeigbours(randY, randX);
+                neigbList.forEach(elem => {
+                    blocks[elem.y][elem.x].neigbourMines++;
+                });
+                
+            }
+            flagsAmount = mines.length;
+            freeFields -= mines.length;
+            flagsScore.textContent = "Залишилося " + flagsAmount + " мін";           
+        }
+
+        function getNeigbours(cY, cX) {
+            let coords = [];
+            if (cX > 0) coords.push({x: cX-1, y: cY});
+            if (cX < size-1) coords.push({x: cX+1, y: cY});
+            if (cY > 0) coords.push({x: cX, y: cY-1});
+            if (cY < size-1) coords.push({x: cX, y: cY+1});
+            if (cX > 0 && cY > 0) coords.push({x: cX-1, y: cY-1});
+            if (cX < size-1 && cY < size-1) coords.push({x: cX+1, y: cY+1});
+            if (cX > 0 && cY < size-1) coords.push({x: cX-1, y: cY+1});
+            if (cX < size-1 && cY > 0) coords.push({x: cX+1, y: cY-1});
+            return coords;
+        }
+
+        function checkWin() {
+            win = freeFields == 0;
+            if(win){
+                for (elem of mines){
+                    if(!(blocks[elem.y][elem.x].mined && blocks[elem.y][elem.x].flagged)){
+                        win = false;
+                        break;
+                    }
+                }
+            }
+            if(win){
+                gameResult.textContent = "Ви виграли, час: " + time + " сек";
+                endGame();
+            } 
+        }
+
+        function endGame() {
+            clearInterval(timer);
+            mainDesk.appendChild(sizeInput);
+            mainDesk.appendChild(startButton);
+        }
+
+       
+        function countTime() {
+            time++;
+            timeScore.textContent = "Час: " + time + " сек";
+        }
+
+        function setSize() {
+            sizeCount.textContent = "Розмір поля: " + sizeInput.value + "x" + sizeInput.value;
+        }
+
+        function openField(curX, curY, alreadyOpened) {
+            blocks[curY][curX].opened = true;            
+            if (firstTouch) {
+                firstTouch= false;
+                generateMines(curX, curY);
+                timer = setInterval(countTime, 1000);
+            }
+            if(blocks[curY][curX].mined){
+                if ((alreadyOpened && !blocks[curY][curX].flagged) || (!alreadyOpened && !blocks[curY][curX].flagged)) {
+                    lose = true;                    
+                    mines.forEach(elem => {
+                        if(!blocks[elem.y][elem.x].flagged) gameField.children[elem.y * size + elem.x].style.backgroundImage = "url('mine.jpg')";
+                    });
+                    for (n  = 0; n < size; n++) {
+                        for (i = 0; i < size; i++){
+                            if(blocks[n][i].flagged && !blocks[n][i].mined) gameField.children[n * size + i].style.backgroundImage = "url('wrong_flag.jpg')";
+                    
+                        }                        
+                    }
+                    gameResult.textContent = "Ви програли, час: " + time + " сек";
+                    endGame();
+                } 
+            } else if (blocks[curY][curX].neigbourMines != 0 && !blocks[curY][curX].mined) {
+                freeFields--;
+                gameField.children[curY * size + curX].style.backgroundImage = textures[blocks[curY][curX].neigbourMines - 1];
+                checkWin();
+            } else {
+                freeFields--;
+                gameField.children[curY * size + curX].style.backgroundImage = "url('open_field.jpg')";
+                let neigbList = getNeigbours(curY, curX);
+                neigbList.forEach(elem => {
+                    if (!blocks[elem.y][elem.x].opened) openField(elem.x, elem.y, false);
+                });
+                checkWin();                
+            }
+        }
+
+
+    </script>
+</body>
+</html>
